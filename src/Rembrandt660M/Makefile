@@ -19,7 +19,7 @@ KFLAGS := -target x86_64-apple-macos10.15 -mkernel -nostdinc -fno-builtin -fno-c
 CXXFLAGS := $(KFLAGS) -std=c++17 -fapple-kext -nostdlib -nostdinc++ -fno-rtti -fno-exceptions \
             -fno-use-cxa-atexit \
             -DPRODUCT_NAME=$(NAME) -DMODULE_VERSION=$(VER) -Wno-deprecated-declarations
-OBJS   := kern_start.o routing.o mmio.o smu.o smu_powerplay.o gfxclk.o psp_compat.o gpu_contract.o golden.o dmub.o display.o firmware.o probe.o vmwatch.o sleep.o usb4.o umdpatch.o disklog.o iogdiag.o wlandiag.o wlanfix.o vramcrc.o nvcopy.o vcn.o fw.o plugin_start.o info.o
+OBJS   := kern_start.o routing.o mmio.o smu.o smu_powerplay.o gfxclk.o psp_compat.o gpu_contract.o golden.o dmub.o display.o firmware.o probe.o vmwatch.o sleep.o usb4.o umdpatch.o disklog.o iogdiag.o wlandiag.o wlanfix.o vramcrc.o nvcopy.o vcn.o vtrim.o fw.o plugin_start.o info.o
 KEXT   := $(NAME).kext/Contents
 # The VBIOS is read at boot from this laptop's ACPI VFCT. A local build may also embed the augmented image as a
 # fallback (Lenovo/AMD firmware, never committed or shipped): put it at fw/lenovo_660m-73ff-aug.rom, or pass

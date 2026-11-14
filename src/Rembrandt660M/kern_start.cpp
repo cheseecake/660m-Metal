@@ -2305,6 +2305,7 @@ static void pluginStart() {
 		wlanDiagStart();  // read-only Wi-Fi nub diagnostic thread (-rmbnowlandiag)
 		gfxClkStart(patcher);  // GFX clock policy once the SMU session is live (-rmbnogfxclk)
 		vcnStart();            // hardware video boot decision + crash guard (-rmbnovcnfix)
+		vramTrimStart();       // orphaned VRAM cache trim below the free reserve (-rmbnovtrim)
 		LOG("patcher ready, kmod list %s, hwlibs kinfo %zu", gKmods ? "found" : "missing", kextHWLibs.loadIndex);
 		IOLog("REM660: [onPatcherLoadForce] patcher ready, kmod list %s\n", gKmods ? "found" : "missing");
 		static bool gPciDevidRouted = false;

@@ -40,6 +40,8 @@ uint32_t smuGfxClkTableAnyKind(uint32_t table, void *output, size_t bytes, uint6
 	uint32_t *kind);
 // gfxclk.cpp: GFX clock policy thread (-rmbnogfxclk = off).
 void gfxClkStart(KernelPatcher &patcher);
+// vtrim.cpp: background trim of the orphaned VRAM cache (-rmbnovtrim, rmbvtrim=<reserve MB>).
+void vramTrimStart();
 // smu.cpp: VCN/JPEG power for vcn.cpp (PowerDownVcn 0x06, PowerUpVcn 0x07, PowerDownJpeg 0x21, PowerUpJpeg 0x22,
 // argument 0; raw PMFW response, 0 = not sent).
 uint32_t smuVcnMsg(uint32_t msg);
