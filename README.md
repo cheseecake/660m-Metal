@@ -636,6 +636,27 @@ row: every PMFW message answered OK, no power failure.
 
 ---
 
+## VRAM cache trim
+
+macOS keeps freed GPU memory in a reusable "orphan" cache. On 25G229 that cache has no size limit and nothing
+trims it, so with a 4 GB carve-out it grows to 2 GB or more. New allocations then fail first
+(`AMD ERROR! Failed to allocate` in the kernel log, about 110 a minute on the 82TL) and are only served after an
+on-demand eviction, which costs time on every window or tab that needs a new surface.
+
+`vtrim` is a kernel thread that keeps some VRAM free. When the estimated free VRAM drops below a reserve
+(512 MB by default), it evicts the oldest orphans with Apple's own non-waiting step (`testAllEvent`, then
+`pruneOrphanedMappings`), under the same lock sequence as Apple's collector.
+
+| | |
+|---|---|
+| **Limits** | At most 128 MB per lock hold, up to reserve + 256 MB free, at least 64 MB of cache left; never waits for the GPU and never touches memory a client still owns |
+| **Checks** | IOAcceleratorFamily2 LC_UUID, 15 code spans and the pool vtable must match 25G229, otherwise it stays off for the boot |
+| **Control file** | `/Users/Shared/rmb-vtrim.ctl`: `off`, `on`, or a reserve in MB (64 to 2048), read every 2 s |
+| **Measured on the 82TL** | Allocating 2 GB of VRAM: 3 passes freed 412 MB in about 1 s, longest lock hold 0.6 ms, 0 failed allocations. Normal use: 0 failed allocations in 24 min (before: ~110 a minute) |
+| **Kill switch** | `-rmbnovtrim`, or `rmbvtrim=0` |
+
+---
+
 ## How it works
 
 ```
@@ -675,7 +696,7 @@ OpenCore ──► Lilu ──► Rembrandt660M.kext
 | `-rmbnoextreplay` | Turn off the replay of a connect event swallowed at boot |
 | `-rmbnogfxclk` | Turn off the GPU clock policy (the PMFW keeps its boot limits) |
 | `-rmbnoedidfix` | Turn off the EDID repair (panel falls back to 60 Hz) |
-| `-rmbnotgfix` | Turn off the timing generator fix |
+| `-rmbnotgfix` | Turn off the timing generator fix (the `Invalid TG (-1)` messages and late flips come back) |
 | `-rmbxhciintr1` | Turn off the xHCI interrupter fix (cursor stutters again) |
 | `-rmbnovcnfix` | Turn off hardware video decode (no VCN hooks, software codecs) |
 | `-rmbvcnguard` | Turn on the VCN crash guard (a boot after a crash during video starts with VCN off) |
@@ -684,6 +705,8 @@ OpenCore ──► Lilu ──► Rembrandt660M.kext
 | `-rmbusbc4lane` | Ask for 4 DP lanes on USB-C (the 82TL hub only has 2) |
 | `-rmbnoblramp` | Turn off the backlight smoother (brightness moves in steps again) |
 | `rmbblramp=<ms>` | Time constant of the backlight smoother, default 50, at most 2000; `0` turns it off |
+| `-rmbnovtrim` | Turn off the VRAM cache trim |
+| `rmbvtrim=<MB>` | Free VRAM reserve of the trim, default 512, 64 to 2048; `0` turns it off |
 
 ---
 

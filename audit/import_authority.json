@@ -22,14 +22,14 @@
     },
     "plugin": {
       "path": "Rembrandt660M",
-      "bytes": 2523376,
-      "sha256": "703b3e1f108ccb38ca2721f8338241c8d01fc60c670ccf5c328f9ce31db9b4bd",
-      "uuid": "593914A8-1B16-88AB-8A13-439A6BF9DC75",
-      "x86_64_slice_bytes": 2523376
+      "bytes": 2587176,
+      "sha256": "86fc7d4e62677ca1f34c1c3030ae1dec7a15f10ef7d372104a5c45f2ecb87524",
+      "uuid": "92B3AD28-0081-8334-86B9-6AB392771241",
+      "x86_64_slice_bytes": 2587176
     }
   },
-  "imports": 402,
-  "matched_names": 402,
+  "imports": 407,
+  "matched_names": 407,
   "unresolved": [],
   "rows": [
     {
@@ -63,7 +63,19 @@
       ]
     },
     {
+      "symbol": "_IOLockSleep_darwin14",
+      "defined_external_in": [
+        "kernel"
+      ]
+    },
+    {
       "symbol": "_IOLockUnlock",
+      "defined_external_in": [
+        "kernel"
+      ]
+    },
+    {
+      "symbol": "_IOLockWakeup_darwin14",
       "defined_external_in": [
         "kernel"
       ]
@@ -118,6 +130,18 @@
     },
     {
       "symbol": "_OSCompareAndSwapPtr",
+      "defined_external_in": [
+        "kernel"
+      ]
+    },
+    {
+      "symbol": "_OSDecrementAtomic",
+      "defined_external_in": [
+        "kernel"
+      ]
+    },
+    {
+      "symbol": "_OSIncrementAtomic",
       "defined_external_in": [
         "kernel"
       ]
@@ -1582,6 +1606,12 @@
     },
     {
       "symbol": "__ZN9IOService22powerStateWillChangeToEmmPS_",
+      "defined_external_in": [
+        "kernel"
+      ]
+    },
+    {
+      "symbol": "__ZN9IOService22waitForMatchingServiceEP12OSDictionaryy",
       "defined_external_in": [
         "kernel"
       ]

@@ -3,7 +3,9 @@ _IOFree
 _IOLockAlloc
 _IOLockFree
 _IOLockLock
+_IOLockSleep_darwin14
 _IOLockUnlock
+_IOLockWakeup_darwin14
 _IOLog
 _IOMalloc
 _IOSimpleLockAlloc
@@ -13,6 +15,8 @@ _IOSleep
 _OSBacktrace
 _OSCompareAndSwap
 _OSCompareAndSwapPtr
+_OSDecrementAtomic
+_OSIncrementAtomic
 _PE_parse_boot_argn
 _VNOP_FSYNC
 _VNOP_IOCTL
@@ -257,6 +261,7 @@ __ZN9IOService20unlockForArbitrationEv
 __ZN9IOService21powerStateDidChangeToEmmPS_
 __ZN9IOService22copyClientWithCategoryEPK8OSSymbol
 __ZN9IOService22powerStateWillChangeToEmmPS_
+__ZN9IOService22waitForMatchingServiceEP12OSDictionaryy
 __ZN9IOService23acknowledgeNotificationEPvj
 __ZN9IOService23addMatchingNotificationEPK8OSSymbolP12OSDictionaryPFbPvS5_PS_P10IONotifierES5_S5_i
 __ZN9IOService23requestPowerDomainStateEmP17IOPowerConnectionm
