@@ -347,6 +347,26 @@ Skip this step if step 4 said the ready-made kext fits. Everything here runs in 
 
 ### Step 8: Turn on acceleration
 
+**The easy way: `install.command`.** It does this whole step for you, the same way as the steps below:
+
+1. Download this repository: green **Code** button → **Download ZIP**, then double-click the zip in Downloads.
+2. For the test stick: in **Disk Utility** erase a USB stick as **MS-DOS (FAT)**, scheme **GUID Partition Map**,
+   and leave it plugged in.
+3. Open **Terminal** and run:
+   ```sh
+   cd ~/Downloads/660m-Metal-main
+   zsh install.command
+   ```
+   With your own kext from step 7, add `--kext <path to your Rembrandt660M.kext>` to the second line.
+4. Choose **1** (test stick). It checks the macOS build, finds the GPU and its PCI path, backs up your EFI to
+   `Documents/660m-EFI-backups` (checked with SHA-256), copies the EFI to the stick, then adds the kext directly
+   after Lilu, the DeviceProperties and `-lilubetaall -rmbumd`. It never touches `PlatformInfo`, SIP or NVRAM.
+5. Restart and pick the stick (item 7 below). If it works, run it again and choose **2** (internal EFI), then **3**
+   (the settings from step 10).
+
+If it prints **STOP**, it says why, and nothing was changed after that point. To do it by hand, or to see exactly
+what it changes, follow these steps instead:
+
 Make the change on a **test stick** first. If something goes wrong, you take the stick out and the laptop boots
 as before.
 
@@ -409,11 +429,14 @@ On the 82TL with 4 GB set in the BIOS it prints:
 
 and a line `[vbios] ATY,bin_image set from ACPI VFCT (0xb600 bytes, fnv ...)`. Animations are now smooth.
 
-If it works, make it permanent. Mount the internal EFI partition (step 8.1) and copy its current `EFI` folder
+If it works, make it permanent. With `install.command`, run it again and choose **2**. By hand: mount the
+internal EFI partition (step 8.1) and copy its current `EFI` folder
 somewhere safe, for example your Documents folder. Then replace it with the `EFI` folder from the test stick.
 Keep the test stick: it boots the same system if the internal EFI ever breaks.
 
 ### Step 10: After it works
+
+`zsh install.command`, option **3**, does items 1 and 2 and turns off automatic macOS updates.
 
 1. **Video decoding.** Let videos use the GPU. Run once; there is no sudo, and `defaults delete com.apple.AppleGVA`
    undoes it:
@@ -447,8 +470,17 @@ The kext writes its log to `/private/var/log/rmb-msgbuf.log` (readable without s
 | Panel stays at 60 Hz | EDID problem | `grep -a edidfix /private/var/log/rmb-msgbuf.log` |
 | The laptop froze and you had to force it off | Unknown | Boot again and open an issue saying what you were doing. A kext you built yourself (step 7) saves the last ~2 minutes before the freeze to `/private/var/log/rmb-msgbuf.prev.log` at the next boot; attach it. The kext in `dist/` doesn't save it yet: copy `rmb-msgbuf.log` right away instead |
 
-To ask for help, open an issue with `gpu-info.txt`, `rmb-msgbuf.log` and what you did. **Never attach
-`VFCT.bin`.**
+**To ask for help**, run the doctor in Terminal (in the downloaded folder, as in step 8):
+
+```sh
+zsh doctor.command
+```
+
+It checks the install (macOS build, kext loaded, VBIOS accepted, DeviceProperties, boot-args, GPU restarts,
+the last shutdown, sleep, updates), prints what is wrong, and saves `660m-doctor-<date>.zip` on the Desktop.
+It changes nothing and needs no password. Wi-Fi names, MAC and IP addresses, your user name and computer name
+are masked; serial numbers, the VBIOS and `PlatformInfo` are left out. Open an issue with that zip,
+`gpu-info.txt` if you built your own kext, and what you did. **Never attach `VFCT.bin`.**
 
 ### Laptop-specific features
 
@@ -823,6 +855,8 @@ graphical picker).
 
 | Path | What's inside |
 |---|---|
+| [`install.command`](install.command) | Installer for step 8 (test stick or internal EFI, with a checked backup) and step 10 |
+| [`doctor.command`](doctor.command) | Checks the install and packs the logs for an issue (private data masked) |
 | [`dist/`](dist) | Built `Rembrandt660M.kext` and the codeless panel injector `RmbPanel660M.kext` |
 | [`src/Rembrandt660M/`](src/Rembrandt660M) | Plugin source (`display.cpp`, `smu.cpp`, `dmub.cpp`, `umdpatch.cpp`, …) |
 | [`build/`](build) | Lilu 1.7.3 headers and runtime used to build and ABI-check the kext |
