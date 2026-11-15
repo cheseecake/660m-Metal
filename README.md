@@ -56,7 +56,7 @@ This repository holds only the graphics implementation, not a full EFI.
 | Feature | Status | Notes |
 |---|:-:|---|
 | **Metal / GPU acceleration** | Works | Every Metal, OpenCL, OpenGL, MPS and ray-tracing path tested passes |
-| **Internal panel 3072×1920 @ 120 Hz** | Works | Bad EDID DisplayID block repaired over AUX (`edidfix`), timing generator fix (`tgfix`) |
+| **Internal panel 3072×1920 @ 120 Hz** | Works | Bad EDID DisplayID block repaired over AUX (`edidfix`), timing generator fix (`tgfix`), display clock raised to the 785 MHz pixel rate (before, "120 Hz" really refreshed at 72 Hz) |
 | **Brightness slider + F5/F6 keys** | Works | Slider with `dist/RmbPanel660M.kext`; keys with `SSDT-BRTKEY` (Lenovo EC, see the [EFI reference](#opencore-efi-reference-lenovo-82tl)) |
 | **External monitor through a USB-C hub** | Works | DP alt mode → HDMI, 1920×1080 @ 120 Hz extended, plugged at boot or later (see [below](#external-display-through-a-usb-c-hub)) |
 | **Safari / text and icon rendering** | Works | AMD UMD `pipeBankXor` forced to 0 (`umdpatch`, `-rmbumd`) |
@@ -697,6 +697,7 @@ OpenCore ──► Lilu ──► Rembrandt660M.kext
 | `-rmbnogfxclk` | Turn off the GPU clock policy (the PMFW keeps its boot limits) |
 | `-rmbnoedidfix` | Turn off the EDID repair (panel falls back to 60 Hz) |
 | `-rmbnotgfix` | Turn off the timing generator fix (the `Invalid TG (-1)` messages and late flips come back) |
+| `-rmbnodispclk` | Keep dispclk/dppclk at 600 MHz (the panel's 120 Hz mode falls back to a real 72 Hz, 4K120 HDMI flashes green) |
 | `-rmbxhciintr1` | Turn off the xHCI interrupter fix (cursor stutters again) |
 | `-rmbnovcnfix` | Turn off hardware video decode (no VCN hooks, software codecs) |
 | `-rmbvcnguard` | Turn on the VCN crash guard (a boot after a crash during video starts with VCN off) |

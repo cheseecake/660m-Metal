@@ -22,10 +22,10 @@
     },
     "plugin": {
       "path": "Rembrandt660M",
-      "bytes": 2587176,
-      "sha256": "86fc7d4e62677ca1f34c1c3030ae1dec7a15f10ef7d372104a5c45f2ecb87524",
-      "uuid": "92B3AD28-0081-8334-86B9-6AB392771241",
-      "x86_64_slice_bytes": 2587176
+      "bytes": 2587464,
+      "sha256": "e16d20e85370872c4728f4b41291dc6244a38cddaba8be7f7cb9cb57aa888c8c",
+      "uuid": "892A94F7-05EC-81B2-BAF4-5AAF6C870EE1",
+      "x86_64_slice_bytes": 2587464
     }
   },
   "imports": 407,

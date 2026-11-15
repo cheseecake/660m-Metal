@@ -380,6 +380,14 @@ void fixDet(uint32_t pipe) {
 bool gKeepDto;
 constexpr uint32_t DpDto0Modulo = 0xC0 + 0x82, NaviDtoRefKhz = 730000, RmbDtoRefKhz = 600000;
 bool isDtoModulo(uint32_t hw) { return hw >= DpDto0Modulo && hw <= DpDto0Modulo + 3 * 4 && (hw - DpDto0Modulo) % 4 == 0; }
+// The panel's 120 Hz mode (785.29 MHz pixel rate, DTO PHASE > MODULO) ran the OTG at 72.4 Hz while
+// 60 Hz (392.64 MHz) was exact: dispclk/dppclk sat at the 600 MHz boot vote, below the pixel rate,
+// because only the HDMI path voted. Track each DP DTO's pixel rate (DAL's units: rate = 730 MHz *
+// PHASE / DAL's MODULO) and vote the max (voteDispClk): 120 Hz gets 800 MHz, 119.8 fps on the panel.
+// -rmbnodispclk keeps 600 MHz.
+constexpr uint32_t DpDto0Phase = 0xC0 + 0x81;
+bool isDtoPhase(uint32_t hw) { return hw >= DpDto0Phase && hw <= DpDto0Phase + 3 * 4 && (hw - DpDto0Phase) % 4 == 0; }
+uint32_t gDtoPhase[4], gDtoDalModulo[4];
 // DCHUBBUB_ARB_DRAM_STATE_CNTL: with self-refresh (stutter) allowed, DCN runs on Navi23's SR
 // watermarks and the panel shows random-height grey/white/yellow/blue bands below the menu bar,
 // much more often with 16 vCPUs (DRAM contention). Force SR disallowed (FORCE_ENABLE=1, VALUE=0),
@@ -1109,21 +1117,42 @@ static void enableFwTrace() {
 
 // Navi23 DAL's clock requests never reach the Rembrandt PMFW, so dispclk/dppclk stay at the boot vote
 // (600 MHz, DPPCLK DTOs 1:1). 4K120 4:2:0 (1188 MHz pixel rate) starved the pipe = green flashes on the LG
-// (auto-1020-1138). Vote the ext stream's pixel rate + 1% (PMFW max 1200 MHz), never below 600
-// (-rmbnodispclk: keep 600).
+// (auto-1020-1138). Vote the highest stream pixel rate + 1% (PMFW max 1200 MHz), never below 600
+// (-rmbnodispclk: keep 600). Sources: 0-3 = DP DTO0-3 (eDP 120 Hz is 785 MHz), 4 = HDMI ext stream.
 bool gNoDispClk;
+constexpr uint32_t ClkSrcHdmi = 4;
+uint32_t gClkReqKhz[5];
 
-static void voteDispClk(uint32_t pixKhz) {
+static void voteDispClk(uint32_t src, uint32_t pixKhz) {
 	static uint32_t cur = 600;
-	uint32_t mhz = (uint32_t)(((uint64_t)pixKhz * 101 + 99999) / 100000);
+	gClkReqKhz[src] = pixKhz;
+	uint32_t maxKhz = 0;
+	for (auto k : gClkReqKhz)
+		maxKhz = k > maxKhz ? k : maxKhz;
+	uint32_t mhz = (uint32_t)(((uint64_t)maxKhz * 101 + 99999) / 100000);
 	mhz = mhz < 600 ? 600 : mhz > 1200 ? 1200 : mhz;
 	if (gNoDispClk || mhz == cur)
 		return;
 	uint32_t r1 = vbiosSmcSend(0x4, mhz), g1 = mmioRead(0x16293);  // SetDispclkFreq
 	uint32_t r2 = vbiosSmcSend(0x6, mhz), g2 = mmioRead(0x16293);  // SetDppclkFreq
-	LOG("dmub-cmd: ext stream %u kHz: dispclk %u -> %u MHz (resp %x granted %u), dppclk (resp %x granted %u)", pixKhz,
-		cur, mhz, r1, g1, r2, g2);
+	LOG("dmub-cmd: %s%u %u kHz (max %u): dispclk %u -> %u MHz (resp %x granted %u), dppclk (resp %x granted %u)",
+		src == ClkSrcHdmi ? "ext stream " : "DP DTO", src == ClkSrcHdmi ? 0 : src, pixKhz, maxKhz, cur, mhz, r1, g1, r2, g2);
 	cur = mhz;
+}
+
+// Called for DAL's DP DTO PHASE/MODULO writes (DAL's values, before the MODULO rescale).
+static void noteDtoWrite(uint32_t hw, uint32_t val) {
+	static uint32_t logged;
+	bool phase = isDtoPhase(hw);
+	uint32_t n = (hw - (phase ? DpDto0Phase : DpDto0Modulo)) / 4;
+	(phase ? gDtoPhase : gDtoDalModulo)[n] = val;
+	uint32_t ph = gDtoPhase[n], mo = gDtoDalModulo[n];
+	uint32_t khz = mo ? (uint32_t)((uint64_t)NaviDtoRefKhz * ph / mo) : 0;
+	if (logged++ < 20)
+		LOG("dcn: DP DTO%u %s = %u (phase %u, DAL modulo %u -> pixel %u kHz)", n, phase ? "PHASE" : "MODULO", val,
+			ph, mo, khz);
+	if (mo && !gKeepDto)
+		voteDispClk(n, khz);
 }
 
 void fixHdmiPixClk(uint64_t ring, uint32_t s, uint32_t clk) {
@@ -1138,7 +1167,7 @@ void fixHdmiPixClk(uint64_t ring, uint32_t s, uint32_t clk) {
 			st.pixKhz, st.enc, st.depth);
 		return;
 	}
-	voteDispClk(st.pixKhz);
+	voteDispClk(ClkSrcHdmi, st.pixKhz);
 	uint32_t ratio = st.depth == 3 ? 1 : st.depth == 4 ? 2 : st.depth == 6 ? 3 : 0;
 	uint32_t n2 = w2 | (st.enc == 4 ? 0x04u << 24 : 0), n3 = (w3 & ~0xFF00u) | ratio << 8;
 	if (gKeepPixClk) {
@@ -1665,6 +1694,8 @@ uint64_t wrapWrite(uint64_t helper, uint64_t reg, uint64_t val, uint64_t d, uint
 	}
 	if (auto k = fieldKind(hw); k != Fields::None)
 		val = fieldsToHw(k, hw, val & 0xFFFFFFFF, mmioRead(hw));
+	if (isDtoPhase(hw) || isDtoModulo(hw))
+		noteDtoWrite(hw, val & 0xFFFFFFFF);
 	if (!gKeepDto && isDtoModulo(hw) && (val & 0xFFFFFFFF)) {
 		uint32_t m = static_cast<uint32_t>((val & 0xFFFFFFFF) * RmbDtoRefKhz / NaviDtoRefKhz);
 		static uint32_t logged;
