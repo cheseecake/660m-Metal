@@ -12,6 +12,10 @@ name: Build Rembrandt660M (25G229)
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-25G229.yml'
 
 jobs:
   build:
