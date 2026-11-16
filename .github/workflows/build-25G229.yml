@@ -1,0 +1,103 @@
+# Workflow: Build Rembrandt660M (Tahoe 26.7 / 25G229)
+# Salin file ini ke FORK PRIVATMU di path yang sama:
+#   .github/workflows/build-25G229.yml
+# Lalu: Actions -> Build Rembrandt660M (25G229) -> Run workflow.
+#
+# Prasyarat repo (fork privat dari cheseecake/660m-Metal, branch main):
+#   src/Rembrandt660M/{Makefile,vbios_augment.hpp,mmio.cpp,kern_start.cpp}
+#   tools/port_vbios.py, scripts/fw-extract.py, dist/RmbPanel660M.kext
+# Semua diverifikasi ada (HTTP 200) pada 2026-11-16.
+
+name: Build Rembrandt660M (25G229)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-26
+    env:
+      KDK_VERSION: KDK_26.7_25G229
+      KDK_DMG_URL: https://github.com/dortania/KdkSupportPkg/releases/download/25G229/Kernel_Debug_Kit_26.7_build_25G229.dmg
+      FW_TAG: "20261019"
+      FW_BASE: https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/amdgpu
+    steps:
+      - name: Checkout (private fork)
+        uses: actions/checkout@v4
+
+      - name: Xcode Command Line Tools on PATH
+        run: |
+          xcode-select -p || sudo xcode-select --install || true
+          echo "/Library/Developer/CommandLineTools/usr/bin" >> "$GITHUB_PATH"
+          xcode-select -p
+          clang --version | head -2
+
+      - name: Clone MacKernelSDK
+        run: |
+          git clone --depth 1 https://github.com/acidanthera/MacKernelSDK.git deps/MacKernelSDK
+          ls deps/MacKernelSDK/Headers | head -5
+
+      - name: Install KDK 25G229 (exact build only)
+        run: |
+          if [ -d "/Library/Developer/KDKs/${KDK_VERSION}.kdk" ]; then
+            echo "KDK already present."
+          else
+            echo "Checking KDK URL (expect 302 -> release-assets)..."
+            curl -fSI --max-time 120 "${KDK_DMG_URL}" | grep -iE "^HTTP|location" | head -5
+            # JANGAN ganti dengan KDK 26A5368g (macOS 27 beta) — build akan gagal/diverifikasi salah.
+            cd "$RUNNER_TEMP"
+            curl -fL --retry 3 -o kdk.dmg "${KDK_DMG_URL}"
+            ls -l kdk.dmg
+            sudo installer -pkg "$(hdiutil attach -nobrowse -mountpoint /tmp/kdkmnt kdk.dmg | grep -o '/tmp/kdkmnt.*' | head -1)"/$(ls /tmp/kdkmnt | grep -i '\.pkg$' | head -1) -target /
+            hdiutil detach /tmp/kdkmnt -force || true
+          fi
+          ls -d "/Library/Developer/KDKs/${KDK_VERSION}.kdk"
+
+      - name: Fetch yellow_carp firmware (tag 20261019)
+        run: |
+          mkdir -p deps/yellow_carp_fw
+          for f in me pfp ce mec mec2 rlc sdma toc dmcub vcn; do
+            curl -fL --retry 3 -o "deps/yellow_carp_fw/yellow_carp_${f}.bin" \
+              "${FW_BASE}/yellow_carp_${f}.bin?h=${FW_TAG}"
+          done
+          # unzstd bila yang turun masih .zst
+          for z in deps/yellow_carp_fw/*.zst; do
+            [ -e "$z" ] || continue
+            unzstd -f "$z" && rm -f "$z"
+          done
+          ls -l deps/yellow_carp_fw
+          test "$(ls deps/yellow_carp_fw/yellow_carp_*.bin | wc -l)" = "10"
+          find deps/yellow_carp_fw -size 0 | grep . && { echo "ZERO-BYTE firmware!"; exit 1; } || echo "firmware OK (10 files)"
+
+      - name: make firmware
+        working-directory: src/Rembrandt660M
+        run: |
+          export PATH="/Library/Developer/CommandLineTools/usr/bin:$PATH"
+          make firmware
+
+      - name: make
+        working-directory: src/Rembrandt660M
+        run: |
+          export PATH="/Library/Developer/CommandLineTools/usr/bin:$PATH"
+          make
+
+      - name: make check (must print RESULT: PASS)
+        working-directory: src/Rembrandt660M
+        run: |
+          export PATH="/Library/Developer/CommandLineTools/usr/bin:$PATH"
+          make check | tee "$RUNNER_TEMP/make-check.log"
+          grep -q "RESULT: PASS" "$RUNNER_TEMP/make-check.log"
+
+      - name: port_vbios.py smoke test (no data yet)
+        run: |
+          python3 tools/port_vbios.py --help 2>&1 | head -20 || \
+            echo "(port_vbios.py needs VFCT args — help unavailable, continuing)"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Rembrandt660M-25G229-${{ github.sha }}
+          path: |
+            src/Rembrandt660M/Rembrandt660M.kext
+            dist/RmbPanel660M.kext
+          if-no-files-found: error
