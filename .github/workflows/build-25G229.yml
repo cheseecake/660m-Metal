@@ -70,7 +70,7 @@ jobs:
             unzstd -f "$z" && rm -f "$z"
           done
           ls -l deps/yellow_carp_fw
-          test "$(ls deps/yellow_carp_fw/yellow_carp_*.bin | wc -l)" = "10"
+          test "$(ls deps/yellow_carp_fw/yellow_carp_*.bin | wc -l | tr -d ' ')" = "10"
           find deps/yellow_carp_fw -size 0 | grep . && { echo "ZERO-BYTE firmware!"; exit 1; } || echo "firmware OK (10 files)"
 
       - name: make firmware
