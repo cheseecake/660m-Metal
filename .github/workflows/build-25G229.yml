@@ -85,7 +85,7 @@ jobs:
           export PATH="/Library/Developer/CommandLineTools/usr/bin:$PATH"
           make
 
-      - name: make check (must print RESULT: PASS)
+      - name: "make check (must print RESULT: PASS)"
         working-directory: src/Rembrandt660M
         run: |
           export PATH="/Library/Developer/CommandLineTools/usr/bin:$PATH"
