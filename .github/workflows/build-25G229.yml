@@ -16,6 +16,8 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/build-25G229.yml'
+      - 'src/Rembrandt660M/**'
+      - 'dist/**'
 
 jobs:
   build:
