@@ -21,7 +21,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-26
+    runs-on: macos-26-intel
     env:
       KDK_VERSION: KDK_26.7_25G229
       KDK_DMG_URL: https://github.com/dortania/KdkSupportPkg/releases/download/25G229/Kernel_Debug_Kit_26.7_build_25G229.dmg
